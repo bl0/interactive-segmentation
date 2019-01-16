@@ -21,8 +21,6 @@ def load_image(img_path, max_height, max_width):
     if scale < 1:
         img = cv2.resize(img, dsize=(0, 0), fx=scale,
                          fy=scale, interpolation=cv2.INTER_CUBIC)
-        print("origin size: {}x{}, resize to {}".format(
-            h, w, img.shape[:2]))
 
     return img
 
@@ -37,9 +35,8 @@ COLOR_BG = (0, 0, 0)
 COLOR_FG = (0, 255, 0)
 
 
-def load_mask(mask_path, img_shape, use_prev_mask):
+def load_mask(mask_path, img_shape, use_prev_mask=True):
     m = np.zeros(img_shape[:2], 'uint8')
-    # m[:] = cv2.GC_PR_FGD
     m[:] = cv2.GC_PR_BGD
     if use_prev_mask and osp.exists(mask_path):
         mask_restored = color2mask(cv2.imread(mask_path))

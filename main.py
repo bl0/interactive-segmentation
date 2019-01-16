@@ -18,9 +18,10 @@ left_mouse_down = False
 mask = np.zeros([])
 show_img = np.zeros([])
 radius = 3
+print('definition', id(show_img))
 
 
-def on_mouse(event, x, y, flags, args):
+def on_mouse(event, x, y, flags, _):
     global left_mouse_down, cur_mouse, radius
     cur_mouse = (x, y)
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -28,6 +29,7 @@ def on_mouse(event, x, y, flags, args):
     elif event == cv2.EVENT_LBUTTONUP:
         left_mouse_down = False
     if left_mouse_down and mask.size > 0 and show_img.size > 0:
+        print('on_mouse', id(show_img))
         if flags & cv2.EVENT_FLAG_CTRLKEY:
             cv2.circle(show_img, (x, y), radius, COLOR_BG, -1)
             cv2.circle(mask, (x, y), radius, cv2.GC_BGD, -1)
@@ -46,11 +48,12 @@ def main(args):
     #     idx += 1
 
     cv2.namedWindow(args.windows_name)
-    cv2.setMouseCallback(args.windows_name, on_mouse, args)
+    cv2.setMouseCallback(args.windows_name, on_mouse)
     cv2.createTrackbar('brush size', args.windows_name,
                        3, args.max_radius, lambda x: None)
 
     global draw_color, mask, show_img, radius
+    print('after gloabl', id(show_img))
     while idx < len(files):
         img_path = osp.join(args.img_dir, files[idx])
         mask_path = osp.join(args.save_dir, files[idx])
@@ -58,6 +61,9 @@ def main(args):
 
         img = load_image(img_path, args.max_height, args.max_width)
         mask = load_mask(mask_path, img.shape, args.use_prev_mask)
+        mask[mask == 0] = 2  # convert GC_BGD to GC_PR_BGD
+        # mask[mask == 1] = 3  # convert GC_FGD to GC_PR_FGD
+        print('after load mask', id(show_img))
 
         bgd_model = np.zeros((1, 65), np.float64)
         fgd_model = np.zeros((1, 65), np.float64)
@@ -83,12 +89,11 @@ def main(args):
                 # GC_FGD    = 1,  //前景
                 # GC_PR_BGD = 2,  //可能背景
                 # GC_PR_FGD = 3   //可能前景
-                mask_bkp = mask.copy()
                 hist, _ = np.histogram(mask, [0, 1, 2, 3, 4])
                 if hist[0] + hist[2] != 0 and hist[1] + hist[3] != 0:
+                    print('grabcut: ', id(show_img))
                     cv2.grabCut(img, mask, None, bgd_model, fgd_model,
                                 args.iter_count, cv2.GC_INIT_WITH_MASK)
-                    print((mask == mask_bkp).all())
                 print('done')
             elif key == ord('s') or key == 10:
                 cv2.imwrite(mask_path, mask2color(mask))
@@ -118,7 +123,7 @@ if __name__ == '__main__':
             'w'/'e': change alpha"""))
     parser.add_argument('-i', '--img-dir', type=str, default='data/images',
                         metavar='DIR', help='directory contains input images')
-    parser.add_argument('-o', '--save-dir', type=str, default='data/output',
+    parser.add_argument('-o', '--save-dir', type=str, default='data/annotation',
                         metavar='DIR', help='directory for segmentation results')
     parser.add_argument('--windows-name', type=str,
                         default='Interactive Segmentation', help='title of main window')
